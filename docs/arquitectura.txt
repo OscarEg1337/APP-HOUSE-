@@ -1,0 +1,25 @@
+CASA OSCAR v0.2
+
+        iPhone / Android / Tablet
+                  |
+                  v
+              Flutter UI
+                  |
+                  v
+            FastAPI Gateway
+                  |
+          +-------+--------+
+          |                |
+          v                v
+   Home Assistant       Base propia
+          |
+ +--------+---------+-----------+----------+
+ |                  |           |          |
+Tuya/Smart Life    MQTT      Matter      Hikvision
+ |                  |           |          |
+ +---------------- Dispositivos de casa --+
+
+Principio de diseño:
+- La app NO guarda el token de Home Assistant.
+- FastAPI actúa como gateway de seguridad y abstracción.
+- Home Assistant sirve como motor de automatización e integración.

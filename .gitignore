@@ -1,0 +1,10 @@
+# Backend Python
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/server.log
+
+# General
+.DS_Store
+*.log
