@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 
-void main() => runApp(const CasaOscarApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Api.init();
+  runApp(const CasaOscarApp());
+}
 
 class CasaOscarApp extends StatelessWidget {
   const CasaOscarApp({super.key});
@@ -13,14 +18,31 @@ class CasaOscarApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Casa Oscar',
       theme: buildAppTheme(),
-      home: const Shell(),
+      home: Api.configured ? const Shell() : const SettingsScreen(firstRun: true),
     );
   }
 }
 
 class Api {
-  // Teléfono real: reemplaza por la IP LAN del servidor FastAPI.
-  static const baseUrl = 'http://127.0.0.1:8000';
+  static const _prefsKey = 'base_url';
+  static String baseUrl = 'http://127.0.0.1:8000';
+  static bool configured = false;
+
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefsKey);
+    if (saved != null && saved.isNotEmpty) {
+      baseUrl = saved;
+      configured = true;
+    }
+  }
+
+  static Future<void> setBaseUrl(String url) async {
+    baseUrl = url;
+    configured = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsKey, url);
+  }
 
   static Future<dynamic> getJson(String path) async {
     final r = await http.get(Uri.parse('$baseUrl$path'));
@@ -255,21 +277,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceElevated,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Icon(Icons.settings_outlined, size: 20, color: AppColors.textSecondary),
                 ),
-                child: const Icon(Icons.notifications_none_rounded, size: 20, color: AppColors.textSecondary),
               ),
               const SizedBox(width: 10),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(gradient: AppColors.heroGradient, shape: BoxShape.circle),
-                child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(gradient: AppColors.heroGradient, shape: BoxShape.circle),
+                  child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -1032,6 +1062,205 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Settings: dirección del backend, guardada en el dispositivo.
+// ---------------------------------------------------------------------------
+
+class SettingsScreen extends StatefulWidget {
+  final bool firstRun;
+  const SettingsScreen({super.key, this.firstRun = false});
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+enum _TestStatus { idle, testing, ok, failed }
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late final TextEditingController _controller;
+  _TestStatus _status = _TestStatus.idle;
+
+  @override
+  void initState() {
+    super.initState();
+    final current = Api.configured ? Api.baseUrl.replaceFirst(RegExp(r'^https?://'), '') : '';
+    _controller = TextEditingController(text: current);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String? _normalize(String raw) {
+    var v = raw.trim();
+    if (v.isEmpty) return null;
+    if (!v.startsWith('http://') && !v.startsWith('https://')) v = 'http://$v';
+    if (v.endsWith('/')) v = v.substring(0, v.length - 1);
+    return v;
+  }
+
+  Future<void> _test() async {
+    final candidate = _normalize(_controller.text);
+    if (candidate == null) return;
+    setState(() => _status = _TestStatus.testing);
+    try {
+      final r = await http.get(Uri.parse('$candidate/')).timeout(const Duration(seconds: 4));
+      setState(() => _status = r.statusCode == 200 ? _TestStatus.ok : _TestStatus.failed);
+    } catch (_) {
+      if (mounted) setState(() => _status = _TestStatus.failed);
+    }
+  }
+
+  Future<void> _save() async {
+    final candidate = _normalize(_controller.text);
+    if (candidate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Escribe la IP del servidor primero')),
+      );
+      return;
+    }
+    await Api.setBaseUrl(candidate);
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const Shell()),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: MobileFrame(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!widget.firstRun)
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: AppColors.textSecondary,
+                  ),
+                SizedBox(height: widget.firstRun ? 20 : 4),
+                IconBadge(icon: Icons.dns_rounded, color: AppColors.primary, size: 54),
+                const SizedBox(height: 16),
+                Text(
+                  widget.firstRun ? 'Conecta tu casa' : 'Configuración',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.firstRun
+                      ? 'Antes de empezar, indica en qué computadora de tu red corre el backend de Casa Oscar.'
+                      : 'Dirección del servidor backend en tu red local.',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                AppCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('IP y puerto', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _controller,
+                        keyboardType: TextInputType.url,
+                        onChanged: (_) => setState(() => _status = _TestStatus.idle),
+                        style: const TextStyle(fontSize: 15),
+                        decoration: InputDecoration(
+                          hintText: '192.168.1.50:8000',
+                          hintStyle: const TextStyle(color: AppColors.textFaint),
+                          prefixIcon: const Icon(Icons.lan_rounded, size: 20, color: AppColors.textFaint),
+                          filled: true,
+                          fillColor: AppColors.surfaceElevated,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Es la IP local de la computadora donde corre el backend FastAPI, seguida del puerto (8000 por defecto). '
+                        'La encuentras corriendo "ipconfig" en esa computadora — busca "Dirección IPv4".',
+                        style: TextStyle(color: AppColors.textFaint, fontSize: 12, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _status == _TestStatus.testing ? null : _test,
+                        icon: _status == _TestStatus.testing
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textSecondary),
+                              )
+                            : const Icon(Icons.wifi_tethering_rounded, size: 18),
+                        label: const Text('Probar conexión'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.borderStrong),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_status == _TestStatus.ok || _status == _TestStatus.failed) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        _status == _TestStatus.ok ? Icons.check_circle_rounded : Icons.error_rounded,
+                        size: 18,
+                        color: _status == _TestStatus.ok ? AppColors.success : AppColors.danger,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _status == _TestStatus.ok ? 'Servidor encontrado' : 'No se pudo conectar',
+                        style: TextStyle(
+                          color: _status == _TestStatus.ok ? AppColors.success : AppColors.danger,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(widget.firstRun ? 'Guardar y continuar' : 'Guardar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
