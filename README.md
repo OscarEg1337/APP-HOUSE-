@@ -73,11 +73,17 @@ Con todo eso: `cd app && flutter run -d <device-id>` (ver el id con `flutter dev
 
 **Home Assistant no vive en este repositorio** — es un servicio aparte con su propia configuración y base de datos (carpeta `~/homeassistant-config` en la máquina donde corre). El backend solo necesita poder *alcanzarlo por red* (misma WiFi, o una VPN tipo Tailscale); no importa en qué máquina se compile o corra la app Flutter.
 
+**Cómo corre hoy (en esta Mac):** Home Assistant Core `2026.8.2` en un contenedor **Docker**, dentro de una VM Linux administrada por **Colima** (no Docker Desktop, no Home Assistant OS/Supervised, no instalación Python directa). Config: `~/homeassistant-config` → montada como volumen del contenedor. Puerto publicado: `8123`. No está configurado Nabu Casa ni un reverse proxy (`.cloud/` vacío, sin `http:`/`external_url` en `configuration.yaml`). El comando `docker run` original no quedó registrado en el historial de shell — probablemente se creó en otra sesión/equipo al momento de la migración inicial de dispositivos.
+
+Para levantarlo de nuevo en esta misma Mac: `colima start` y luego `docker start homeassistant` (o el nombre que tenga el contenedor — verificar con `docker ps -a` después de `colima start`).
+
 Para mover Home Assistant a otro equipo:
 
-1. En el HA actual: **Ajustes → Sistema → Copias de seguridad** → crear un backup completo (`.tar` con config, integraciones e historial).
-2. Instalar Home Assistant en el equipo nuevo (mismo método de instalación que se usó originalmente).
+1. En el HA actual (con Colima/Docker corriendo): **Ajustes → Sistema → Copias de seguridad** → crear un backup completo (`.tar` con config, integraciones e historial).
+2. En el equipo nuevo: instalar Docker (Colima, Docker Desktop, o el que se prefiera) y correr la imagen oficial `homeassistant/home-assistant`, montando una carpeta de config nueva.
 3. Restaurar desde ese backup en el primer arranque.
+
+Alternativa más directa (sin pasar por el asistente de restauración): copiar completa la carpeta `~/homeassistant-config` al equipo nuevo y montarla como volumen del contenedor nuevo — funciona porque toda la config/estado de HA vive ahí (YAML + `.storage/` + base de datos), pero es menos "oficial" que usar Backup/Restore.
 
 **Importante:** si hay un dongle USB (Zigbee/Z-Wave), es hardware físico — el backup no lo mueve, hay que conectarlo físicamente al equipo nuevo. Los dispositivos WiFi/Tuya no tienen ese problema (dependen de la cuenta cloud, no del dongle).
 
