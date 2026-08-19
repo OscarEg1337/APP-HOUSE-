@@ -126,7 +126,7 @@ class _ShellState extends State<Shell> {
                         height: 30,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated.withValues(alpha: 0.92),
+                          color: AppColors.surfaceElevated.withOpacity(0.92),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.borderStrong),
                           boxShadow: const [
@@ -169,7 +169,7 @@ class _NavBar extends StatelessWidget {
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.surfaceElevated.withValues(alpha: 0.92),
+        color: AppColors.surfaceElevated.withOpacity(0.92),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: AppColors.borderStrong),
         boxShadow: const [
@@ -190,7 +190,7 @@ class _NavBar extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary.withValues(alpha: 0.16) : Colors.transparent,
+                  color: selected ? AppColors.primary.withOpacity(0.16) : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -377,7 +377,7 @@ class _StatusHero extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(13),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
+                      color: Colors.white.withOpacity(0.16),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Icon(Icons.home_rounded, size: 26, color: Colors.white),
@@ -398,7 +398,7 @@ class _StatusHero extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: Colors.white.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -491,7 +491,7 @@ class _SceneCardState extends State<SceneCard> {
                   bottom: -18,
                   child: Transform.rotate(
                     angle: -0.35,
-                    child: Icon(icon, size: 92, color: color.withValues(alpha: 0.12)),
+                    child: Icon(icon, size: 92, color: color.withOpacity(0.12)),
                   ),
                 ),
                 Padding(
@@ -839,9 +839,9 @@ class _StepperButton extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.14),
+          color: color.withOpacity(0.14),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Icon(icon, size: 17, color: color),
       ),
@@ -864,9 +864,9 @@ class _MiniButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 9),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: filled ? color.withValues(alpha: 0.85) : Colors.transparent,
+          color: filled ? color.withOpacity(0.85) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: filled ? 0 : 0.4)),
+          border: Border.all(color: color.withOpacity(filled ? 0 : 0.4)),
         ),
         child: Text(label,
             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: filled ? Colors.black : color)),
@@ -928,7 +928,7 @@ class ScenesScreen extends StatelessWidget {
                       Container(
                         width: 38,
                         height: 38,
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.85), shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: color.withOpacity(0.85), shape: BoxShape.circle),
                         child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 20),
                       ),
                     ],
@@ -1015,7 +1015,7 @@ class _EnergyHero extends StatelessWidget {
                         value: ratio,
                         strokeWidth: 7,
                         color: Colors.white,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
+                        backgroundColor: Colors.white.withOpacity(0.2),
                         strokeCap: StrokeCap.round,
                       ),
                       const Icon(Icons.bolt_rounded, color: Colors.white, size: 26),

@@ -108,23 +108,57 @@ def headers():
         raise HTTPException(500, "HOME_ASSISTANT_TOKEN no configurado")
     return {"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"}
 
+async def ha_template(template: str) -> str:
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.post(f"{HA_URL}/api/template", headers=headers(), json={"template": template})
+    if r.status_code != 200:
+        raise HTTPException(r.status_code, r.text)
+    return r.text
+
+async def entity_areas() -> dict:
+    """entity_id -> nombre de Área asignada en Home Assistant (vacío si no tiene)."""
+    text = await ha_template(
+        "{% for s in states %}{{ s.entity_id }}|{{ area_name(s.entity_id) or '' }}\n{% endfor %}"
+    )
+    result = {}
+    for line in text.strip().splitlines():
+        if "|" in line:
+            entity_id, area = line.split("|", 1)
+            if area:
+                result[entity_id] = area
+    return result
+
+async def ha_area_names() -> list:
+    text = await ha_template("{% for a in areas() %}{{ area_name(a) }}\n{% endfor %}")
+    return [line.strip() for line in text.strip().splitlines() if line.strip()]
+
 @app.get("/")
 async def root():
     return {"name":"Casa Oscar API","version":"0.2.0","demo_mode":DEMO_MODE}
 
 @app.get("/api/rooms")
 async def rooms():
+    device_list = await devices()
+    if DEMO_MODE:
+        room_meta = {r["name"]: r for r in ROOMS}
+    else:
+        room_meta = {
+            name: {"id": name.lower().replace(" ", "_"), "name": name, "floor": "", "icon": "room"}
+            for name in await ha_area_names()
+        }
     result = []
-    for room in ROOMS:
-        count = sum(1 for d in DEVICES if d["room"] == room["name"])
-        active = sum(1 for d in DEVICES if d["room"] == room["name"] and d["state"] in ("on","cool","streaming","open"))
-        result.append({**room, "device_count":count, "active_count":active})
+    for name, meta in room_meta.items():
+        room_devices = [d for d in device_list if d.get("room") == name]
+        count = len(room_devices)
+        active = sum(1 for d in room_devices if d.get("state") in ("on","cool","streaming","open"))
+        result.append({**meta, "device_count":count, "active_count":active})
     return result
 
 @app.get("/api/devices")
 async def devices(room: Optional[str] = None):
     if DEMO_MODE:
         return [d for d in DEVICES if room is None or d["room"] == room]
+    areas = await entity_areas()
     async with httpx.AsyncClient(timeout=10) as client:
         r = await client.get(f"{HA_URL}/api/states", headers=headers())
     if r.status_code != 200:
@@ -136,10 +170,13 @@ async def devices(room: Optional[str] = None):
         if domain not in allowed:
             continue
         a = s.get("attributes", {})
+        room_name = areas.get(s["entity_id"], "Sin asignar")
+        if room is not None and room_name != room:
+            continue
         result.append({
             "entity_id":s["entity_id"],
             "name":a.get("friendly_name", s["entity_id"]),
-            "room":a.get("room","Sin asignar"),
+            "room":room_name,
             "type":domain,
             "state":s.get("state"),
             "temperature":a.get("temperature"),

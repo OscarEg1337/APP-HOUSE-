@@ -114,7 +114,7 @@ ThemeData buildAppTheme() {
       activeTrackColor: AppColors.primary,
       inactiveTrackColor: AppColors.border,
       thumbColor: Colors.white,
-      overlayColor: AppColors.primary.withValues(alpha: 0.15),
+      overlayColor: AppColors.primary.withOpacity(0.15),
       trackHeight: 4,
     ),
     switchTheme: SwitchThemeData(
@@ -186,7 +186,7 @@ class Blob extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withValues(alpha: opacity), color.withValues(alpha: 0)],
+          colors: [color.withOpacity(opacity), color.withOpacity(0)],
         ),
       ),
     );
@@ -227,9 +227,9 @@ class IconBadge extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0.14)],
+          colors: [color.withOpacity(0.28), color.withOpacity(0.14)],
         ),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(color: color.withOpacity(0.35)),
       ),
       child: Icon(icon, color: color, size: size * 0.48),
     );
